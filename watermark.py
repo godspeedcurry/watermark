@@ -5,6 +5,7 @@ text = "第五届强网杯专用"
 color = (0x8f,0x8f,0x8f)
 rot = 10
 def gen_watermark():
+    print('Generate watermark now...')
     width = 1500
     height = 1500
     watermark = Image.new('RGBA',(width,height),(0,0,0,0))
@@ -22,18 +23,18 @@ def gen_watermark():
     watermark = watermark.crop((width//2-width//4,height//2-height//4,width//2 + width//4, height//2 + height//4))
     watermark = watermark.resize((width,height))
     watermark.save('watermark.png')
-    
+    print('Generate watermark done!')
 
 def watermark(background,waterimage,output_path):
-    print('Generate watermark now...')
+    print(f'deal {output_path}, please wait')
     bg = Image.open(background)
     wm = Image.open(waterimage)
     wm = wm.resize(bg.size)
     # 使水印居中
     width1,height1 = bg.size
     width2,height2= wm.size
-    width = (width1-width2)//2
-    height = (height1-height2)//2
+    width = (width1-width2) // 2
+    height = (height1-height2) // 2
     # 转换为rgba模式
     if bg.mode != "RGBA":
         bg = bg.convert("RGBA")
@@ -46,15 +47,25 @@ def watermark(background,waterimage,output_path):
     out = Image.composite(layer,bg,layer)
     # 重命名保存文件
     out.save(output_path)
-    print('Generate watermark done!')
+    
 
 def init():
     print('Initalize workspace now...')
+    os.system('rm -rf ./input')
+    os.system('rm -rf ./output')
+
+
+    try:
+        os.mkdir('tmp')
+    except Exception as e:
+        print(e)
+    os.system('mv *.png *.jpg tmp/')
+    
     try:
         os.mkdir('input')
     except Exception as e:
         print(e)
-    os.system('mv *.png input/')
+    
     try:
         os.mkdir('output')
     except Exception as e:
@@ -68,10 +79,24 @@ def clean():
 
 def main():
     init()
+    cwd = os.getcwd()
+    # convert format now
+    for tp in os.listdir('./tmp'):
+        if 'DS_Store' in tp:
+            continue
+        orgin_path = os.path.join(cwd, 'tmp', tp)
+        img = Image.open(orgin_path)
+        if orgin_path.endswith('.png'):
+            os.system(f'mv ./tmp/{tp} ./input/{tp}')
+            print(f'{orgin_path} move success')
+        else:
+            input_path = os.path.join(cwd,'input',tp.split('.')[0]+".png")
+            img.save(input_path)
+            print(f'{input_path} convert success')
     gen_watermark()
     
-    print(f"now we at {os.getcwd()}")
-    cwd = os.getcwd()
+    print(f"now we at {cwd}")
+    
     for inp in os.listdir('./input'):
         input_path = os.path.join(cwd,'input',inp)
         output_path = os.path.join(cwd,'output',inp)
