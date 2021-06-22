@@ -1,3 +1,4 @@
+#!/usr/bin/env python3
 import os
 from PIL import ImageFont,ImageDraw,Image
 text = "第五届强网杯专用"
