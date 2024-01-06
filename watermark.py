@@ -2,22 +2,20 @@
 from pathlib import Path
 import argparse
 import math
+import dataclasses
 from typing import *
-from PIL import ImageFont, ImageDraw, Image
+from PIL import ImageFont, ImageOps, ImageDraw, Image
+SUPPORTED_SUFFIX = ('.jpg', '.jpeg', '.png')
+RGB_SUFFIX = ('.jpg', '.jpeg')
 
-SUPPORTED_SUFFIX = ('.jpg', '.png')
 
-
+@dataclasses.dataclass
 class InputImage:
     name: str
     image: Image.Image
 
-    def __init__(self, name: str, image: Image.Image) -> None:
-        self.name = name
-        self.image = image
 
-
-def gen_watermark(text: str, font: ImageFont.ImageFont, size: Tuple[int, int], rot_degree, color=(0x7f, 0x7f, 0x7f)) -> Image.Image:
+def gen_watermark(text: str, font: ImageFont.ImageFont, size: Tuple[int, int], rot_degree, color) -> Image.Image:
     print('Generating watermark...')
     
     width, height = size
@@ -70,6 +68,8 @@ def parse_args(args=None):
                         type=Path, help='ttf watermark font')
     parser.add_argument('--font-size', default=45,
                         type=int, help='size of watermark font')
+    parser.add_argument('--alpha', default=0.5,
+                        type=float, help='alpha of watermark color')
     return parser.parse_args(args)
 
 
@@ -80,23 +80,26 @@ def main(args: argparse.Namespace):
     rot: int = args.rot
     font_file: Path = args.font_file
     font_size: int = args.font_size
+    alpha: float = args.alpha
 
     font = ImageFont.truetype(str(font_file), font_size)
 
     images: List[InputImage] = []
     for filename in file.iterdir():
-        if filename.is_file() and filename.name.endswith(SUPPORTED_SUFFIX):
-            images.append(InputImage(filename.name, Image.open(filename)))
+        if filename.name.endswith(SUPPORTED_SUFFIX) and filename.is_file():
+            img = Image.open(filename)
+            ImageOps.exif_transpose(img, in_place=True)
+            images.append(InputImage(name=filename.name, image=img))
     
-    max_width = max(map(lambda img: img.image.width, images))
-    max_height = max(map(lambda img: img.image.height, images))
-    watermark = gen_watermark(text, font, (max_width, max_height), rot)
+    max_width = max(img.image.width for img in images)
+    max_height = max(img.image.height for img in images)
+    watermark = gen_watermark(text, font, (max_width, max_height), rot, (0x7f, 0x7f, 0x7f, int(0xff * alpha)))
     
     output.mkdir(parents=True, exist_ok=True)
     for img in images:
         print(f'Dealing with {img.name}')
         with watermarkize(img.image, watermark) as output_image:
-            if img.name.endswith('.jpg'):
+            if img.name.endswith(RGB_SUFFIX):
                 output_image = output_image.convert('RGB')
             output_image.save(output / img.name)
 
